@@ -1,50 +1,68 @@
-# SBUS_Generator 
+# SBUS_Generator
 
-pythonを使って、シリアル通信でSBUSを送るコードです
-
-受信機が必要なデバックを簡易的に実行することができます
+Pythonでシリアル通信経由のSBUS送信とモニタ表示を行うツールです。  
+現在のメイン実装は `main.py`（送信＋モニタGUI）です。
 
 ## 実行環境
 
-・python 3.12.4
+- Python 3.x
+- pyserial 3.5
+- keyboard 0.13.5
+- tkinter（標準ライブラリ）
 
-・pyserial 3.5
+## セットアップ
 
-> [!NOTE]
-> 少し古い環境で実行していますが、pyserialが対応していればどのバージョンでも動かせます
-
-## 使い方
-
-・使用するポートを選択する
-
-```py
-# "com5"の部分を変更してください
-ser = serial.Serial('com5', baudrate=100000, parity=serial.PARITY_EVEN, stopbits=2, timeout=1)
+```bash
+pip install -r requirements.txt
 ```
-・USB等を接続し、プログラムを実行する`
 
-・ WASDなどのキーボード操作を行い、値を調整しつつ送信する
+## COMポートの設定方法
+
+使用するCOMポートは、実行するスクリプト内の設定値を編集します。
+
+- `main.py`  
+  `SERIAL_PORT = 'com7'`
+- `sbus_controller.py`  
+  `serial.Serial('com7', ...)`
+- `sbus_monitor.py`  
+  `self.serial_port = 'com7'`
+
+環境に合わせて `com7` を `COM3` / `COM5` などに変更してください（Windows想定）。
+
+### 現在のシリアル設定（実装準拠）
+
+- Baudrate: `115200`
+- Parity: `NONE`
+- Stopbits: `1`
+- Timeout: `1`
+
+## 操作方法（main.py）
+
+```bash
+python main.py
+```
+
+### キー操作
+
+- `J / L` : CH1（エルロン左）
+- `A / D` : CH2（ラダー）
+- `W / S` : CH3（スロットル）
+- `I / K` : CH4（エレベーター）
+- `Q / E` : CH6（エルロン右）を低/高に切替
+- `0` : CH5 を3段階切替（500/1000/1500）
+- `1`〜`9`, `-` : CH7〜CH16 を3段階切替（500/1000/1500）
+- `R` : 全チャンネルを初期値へリセット
+
+### GUI操作
+
+- `Disconnect` : シリアル切断
+- `Key Guide` : キー操作ガイド表示
+- `Exit` : 終了
+
+## 補足
+
+- `sbus_controller.py` はキーボード操作でSBUS送信するシンプル版です。
+- `sbus_monitor.py` はSBUS受信表示用のモニタです。
 
 > [!WARNING]
-> #### 実際の受信機との違い
-> 
-> 信号の反転を行っていません
-> (Not回路などの信号の反転を外して使ってください）
-
-## 操作方法
-
-・W/S channel 2
-
-・A/D channel 1
-
-・Q/E channel 6
-
-・J/L channel 0
-
-・R   reset
-
-値は 0 <= value <= 2000 の範囲になります
-
-> [!WARNING]
-> #### 勢いよく値が変わるので、モータテストの際には値の増える速度を調整してください
-> 
+> 実際の受信機との違いとして、信号反転を行っていません。必要に応じて外部回路等で対応してください。
