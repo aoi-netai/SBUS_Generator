@@ -5,8 +5,8 @@ import threading
 import time
 import keyboard
 
-# COM5の部分を使用するポートに合わせて変更
-SERIAL_PORT = 'com7'
+# COM6の部分を使用するポートに合わせて変更
+SERIAL_PORT = 'com6'
 BAUDRATE = 115200
 
 class SBUSControllerMonitorApp:
@@ -23,24 +23,25 @@ class SBUSControllerMonitorApp:
         
         # コントローラーデータ
         self.control = [1000] * 16
-        # スイッチ系チャンネル（CH5, CH7-CH16）を初期値500に設定（switch_states=1 に対応）
-        self.control[4] = 500   # CH5
+        # スイッチ系チャンネル（CH5, CH6, CH7-CH16）を初期値500に設定（switch_states=1 に対応）
+        self.control[4] = 500   # CH5 (DROP)
+        self.control[5] = 500   # CH6 (ARM)
         for i in range(6, 16):  # CH7-CH16
             self.control[i] = 500
         self.data = [0] * 25
-        self.switch_states = [1] * 11  # [0]=CH5, [1..6]=CH7-CH12, [7..10]=CH13-CH16
+        self.switch_states = [1] * 10  # [0]=CH5, [1]=CH6, [2..5]=CH7-CH10, [6..9]=CH11-CH14
         self._toggle_key_pressed = set()
-        
+
         # チャンネル名
         self.channel_names = [
-            "CH1  エルロン（左）",    "CH2  ラダー",
-            "CH3  スロットル",       "CH4  エレベーター",
-            "CH5  投下装置 (Key:0)",  "CH6  エルロン（右）",
-            "CH7  自動操縦 (Key:1)",  "CH8  ミッション選択 (Key:2)",
-            "CH9  自動離着陸 (Key:3)", "CH10 安全装置 (Key:4)",
-            "CH11 離陸前テスト (Key:5)", "CH12 離陸後テスト (Key:6)",
-            "CH13 (Key:7)",            "CH14 (Key:8)",
-            "CH15 (Key:9)",            "CH16 (Key:-)"
+            "CH1  ピッチ",               "CH2  ロール",
+            "CH3  スロットル",            "CH4  ヨー",
+            "CH5  投下装置 (Key:0)",      "CH6  アーム (Key:1)",
+            "CH7  安全装置 (Key:2)",      "CH8  自動ミッション (Key:3)",
+            "CH9  離陸前デバッグ (Key:4)", "CH10 離陸後デバッグ (Key:5)",
+            "CH11 (Key:6)",               "CH12 (Key:7)",
+            "CH13 (Key:8)",               "CH14 (Key:9)",
+            "CH15",                        "CH16"
         ]
         
         # GUI要素の初期化
@@ -183,26 +184,22 @@ class SBUSControllerMonitorApp:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 【プロポスティック操作】
-  エルロン（左） (CH1) : A / D キー
-  ラダー     (CH2) : J / L キー
-  スロットル (CH3) : W / S キー
-  エレベーター (CH4) : I / K キー
+  ピッチ      (CH1) : I / K キー
+  ロール      (CH2) : A / D キー
+  スロットル  (CH3) : W / S キー
+  ヨー        (CH4) : J / L キー
 
-【切り替え操作】
-  投下装置   (CH5)  : 0 キー (3段階: 500/1000/1500)
-  エルロン（右） (CH6)  : Q / E キー
-
-【3段階切り替え】
-  自動操縦     (CH7)  : 1 キー (500/1000/1500)
-  ミッション選択   (CH8)  : 2 キー (500/1000/1500)
-  自動離着陸   (CH9)  : 3 キー (500/1000/1500)
-  安全装置     (CH10) : 4 キー (500/1000/1500)
-  離陸前テスト (CH11) : 5 キー (500/1000/1500)
-  離陸後テスト (CH12) : 6 キー (500/1000/1500)
-  （未割り当）  (CH13) : 7 キー (500/1000/1500)
-  （未割り当）  (CH14) : 8 キー (500/1000/1500)
-  （未割り当）  (CH15) : 9 キー (500/1000/1500)
-  （未割り当）  (CH16) : - キー (500/1000/1500)
+【切り替え操作 (3段階: 500/1000/1500)】
+  投下装置       (CH5)  : 0 キー
+  アーム         (CH6)  : 1 キー
+  安全装置       (CH7)  : 2 キー
+  自動ミッション (CH8)  : 3 キー
+  離陸前デバッグ (CH9)  : 4 キー
+  離陸後デバッグ (CH10) : 5 キー
+  （未割り当）   (CH11) : 6 キー
+  （未割り当）   (CH12) : 7 キー
+  （未割り当）   (CH13) : 8 キー
+  （未割り当）   (CH14) : 9 キー
 
 【その他】
   リセット      : R キー (すべてニュートラル)
@@ -280,41 +277,44 @@ class SBUSControllerMonitorApp:
         """キーボード入力チェック"""
         # トグルキーマッピング: {key: (switch_statesインデックス, controlインデックス)}
         toggle_map = {
-            '0': (0, 4),
-            '1': (1, 6),  '2': (2, 7),  '3': (3, 8),  '4': (4, 9),
-            '5': (5, 10), '6': (6, 11), '7': (7, 12), '8': (8, 13),
-            '9': (9, 14), '-': (10, 15),
+            '0': (0, 4),   # CH5 DROP
+            '1': (1, 5),   # CH6 ARM
+            '2': (2, 6),   # CH7 SAFETY
+            '3': (3, 7),   # CH8 AUTO_MISSION
+            '4': (4, 8),   # CH9 PREFLIGHT_DEBUG
+            '5': (5, 9),   # CH10 FLIGHT_DEBUG
+            '6': (6, 10), '7': (7, 11), '8': (8, 12), '9': (9, 13),
         }
 
         while self.running:
             try:
                 # アナログチャンネル（ポーリング）
                 step = 10
-                if keyboard.is_pressed('j'):
+                # PITCH (CH1, index 0): I/K
+                if keyboard.is_pressed('i'):
                     if self.control[0] < 1680: self.control[0] += step
-                elif keyboard.is_pressed('l'):
+                elif keyboard.is_pressed('k'):
                     if self.control[0] > 360: self.control[0] -= step
 
+                # ROLL (CH2, index 1): A/D
                 if keyboard.is_pressed('a'):
                     if self.control[1] < 1680: self.control[1] += step
                 elif keyboard.is_pressed('d'):
                     if self.control[1] > 360: self.control[1] -= step
 
+                # THROTTLE (CH3, index 2): W/S
                 if keyboard.is_pressed('w'):
                     if self.control[2] < 1680: self.control[2] += step
                 elif keyboard.is_pressed('s'):
                     if self.control[2] > 360: self.control[2] -= step
 
-                if keyboard.is_pressed('i'):
-                    if self.control[3] < 1680: self.control[3] += step
-                elif keyboard.is_pressed('k'):
-                    if self.control[3] > 360: self.control[3] -= step
-
-                # エルロン2（CH6）を360～1680範囲に正規化
-                if keyboard.is_pressed('q'):
-                    self.control[5] = 360   # 設定倥をQキー用に調整
-                elif keyboard.is_pressed('e'):
-                    self.control[5] = 1680  # 設定倥をEキー用に調整
+                # YAW (CH4, index 3): J/L
+                if keyboard.is_pressed('j'):
+                    if self.control[3] < 1680:
+                        self.control[3] += step
+                elif keyboard.is_pressed('l'):
+                    if self.control[3] > 360:
+                        self.control[3] -= step
 
                 # トグルキー（状態追跡ベースデバウンス - time.sleep不要）
                 for key, (sw_idx, ctrl_idx) in toggle_map.items():
@@ -331,10 +331,11 @@ class SBUSControllerMonitorApp:
                     if 'R' not in self._toggle_key_pressed:
                         self._toggle_key_pressed.add('R')
                         self.control = [1000] * 16
-                        self.control[4] = 500
+                        self.control[4] = 500   # CH5 DROP
+                        self.control[5] = 500   # CH6 ARM
                         for _i in range(6, 16):
                             self.control[_i] = 500
-                        self.switch_states = [1] * 11
+                        self.switch_states = [1] * 10
                 else:
                     self._toggle_key_pressed.discard('R')
 

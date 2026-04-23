@@ -174,4 +174,4 @@ while(1):
     convert_data() # データの変換
 
     ser.write(data) # 送信
-    time.sleep(0.002) # 送信間隔（SBUS: 2ms）
+    time.sleep(0.1) # 送信間隔（SBUS: 2ms）
