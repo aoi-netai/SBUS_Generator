@@ -55,6 +55,8 @@ python main.py
 
 ### GUI操作
 
+- `Copy Log` : 表示中のHEXログまたはテキストログをクリップボードへコピー
+- `Clear Log` : 表示中のログを消去
 - `Disconnect` : シリアル切断
 - `Key Guide` : キー操作ガイド表示
 - `Exit` : 終了

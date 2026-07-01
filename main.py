@@ -6,7 +6,7 @@ import time
 import keyboard
 
 # COM6の部分を使用するポートに合わせて変更
-SERIAL_PORT = 'com6'
+SERIAL_PORT = 'com5'
 BAUDRATE = 115200
 
 class SBUSControllerMonitorApp:
@@ -160,8 +160,18 @@ class SBUSControllerMonitorApp:
         self.hex_text.pack(fill=tk.BOTH, expand=True, pady=5)
         self.hex_text.bind("<Key>", lambda e: "break")
         
-        hex_clear_btn = ttk.Button(hex_frame, text="Clear Log", command=self.clear_log)
-        hex_clear_btn.pack(pady=5)
+        hex_button_frame = ttk.Frame(hex_frame)
+        hex_button_frame.pack(pady=5)
+
+        hex_copy_btn = ttk.Button(
+            hex_button_frame,
+            text="Copy Log",
+            command=lambda: self.copy_log(self.hex_text, "HEX")
+        )
+        hex_copy_btn.pack(side=tk.LEFT, padx=5)
+
+        hex_clear_btn = ttk.Button(hex_button_frame, text="Clear Log", command=self.clear_log)
+        hex_clear_btn.pack(side=tk.LEFT, padx=5)
         
         # テキストデータタブ
         text_frame = ttk.Frame(sub_notebook)
@@ -174,8 +184,18 @@ class SBUSControllerMonitorApp:
         self.monitor_text.pack(fill=tk.BOTH, expand=True, pady=5)
         self.monitor_text.bind("<Key>", lambda e: "break")
         
-        text_clear_btn = ttk.Button(text_frame, text="Clear Log", command=self.clear_text_log)
-        text_clear_btn.pack(pady=5)
+        text_button_frame = ttk.Frame(text_frame)
+        text_button_frame.pack(pady=5)
+
+        text_copy_btn = ttk.Button(
+            text_button_frame,
+            text="Copy Log",
+            command=lambda: self.copy_log(self.monitor_text, "Text")
+        )
+        text_copy_btn.pack(side=tk.LEFT, padx=5)
+
+        text_clear_btn = ttk.Button(text_button_frame, text="Clear Log", command=self.clear_text_log)
+        text_clear_btn.pack(side=tk.LEFT, padx=5)
     
     def create_guide_tab(self, parent):
         """操作ガイドタブ"""
@@ -238,6 +258,18 @@ class SBUSControllerMonitorApp:
     
     def clear_text_log(self):
         self.monitor_text.delete(1.0, tk.END)
+
+    def copy_log(self, text_widget, log_name):
+        """表示中のログをクリップボードへコピー"""
+        log = text_widget.get("1.0", "end-1c")
+        if not log:
+            self.status_var.set(f"Status: {log_name} log is empty")
+            return
+
+        self.root.clipboard_clear()
+        self.root.clipboard_append(log)
+        self.root.update_idletasks()
+        self.status_var.set(f"Status: {log_name} log copied to clipboard")
     
     def convert_data(self):
         """SBUSデータに変換 - 16チャンネル対応"""
